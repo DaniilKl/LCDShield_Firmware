@@ -1,12 +1,12 @@
 /*File name: main.c;
 * Author: Daniil;
-* Platform: Windows 10 x64;
 * Compiler: armclang;
 * Language: C;
 * Hardware used in testing: STM32 NUCLEO-F401RE, LCD Keypad Shield for ARDUINO, LCD1602 with HCD44780UA00 chip.
 * Warnings: -
-* Description: -
-* Last update: 27.03.2023.
+* Description: main.h and main.c files consist two examples: an example of using LCD firmware and an example of using menu middleware for LCD.
+*							 The LCD firmware example is compiled automatically. If you want to compile menu example - define MENU_MIDDLEWARE_EXAMPLE.
+* Last update: 07.04.2023.
 */
 
 #include "main.h"
@@ -31,17 +31,118 @@ int main(void){
 	HAL_Delay(500);
 	LCD_WriteCommand(LCDInitStructure, LCD_CLEAN);
 	
+	#ifdef MENU_MIDDLEWARE_EXAMPLE
+	//Here is an example for LCDmenu.h middleware:
+	
+	//First menu initialization:
+	MenuStructureTypedef Menu_1 = {0}; //Declaration
+	Menu_1.MenuList = (uint8_t**)malloc(sizeof(uint8_t)*4*17); //Allocation
+	
+	//Initialization:
+	Menu_1.MenuList[0] = "****************";
+	Menu_1.MenuList[1] = "Start";
+	Menu_1.MenuList[2] = "Options";
+	Menu_1.MenuList[3] = "****************";
+	Menu_1.AmountOfMenuLines = 4; //Amount of menu lines in MenuList variable
+	
+	//Menu_1 startup position settings:
+	Menu_1.LinesToDisplay[0] = 1;
+	Menu_1.LinesToDisplay[1] = 2;
+	Menu_1.CurrentLinePos = 0;
+	
+	//Option menu initialization:
+	MenuStructureTypedef Menu_Options = {0}; //Declaration
+	Menu_Options.MenuList = (uint8_t**)malloc(sizeof(uint8_t*)*5*17); //Allocation
+	
+	//Initialization:
+	Menu_Options.MenuList[0] = "****************";
+	Menu_Options.MenuList[1] = "Option 1";
+	Menu_Options.MenuList[2] = "Option 2";
+	Menu_Options.MenuList[3] = "Return";
+	Menu_Options.MenuList[4] = "****************";
+	Menu_Options.AmountOfMenuLines = 5; //Amount of menu lines in MenuList variable
+	
+	//Menu_Options startup position settings:
+	Menu_Options.LinesToDisplay[0] = 1;
+	Menu_Options.LinesToDisplay[1] = 2;
+	Menu_Options.CurrentLinePos = 0;
+	
+	uint8_t MenuToDisplay = 0; //0(false) - display "Menu_1", 1(true) - display "Menu_Options"
+	
+	Menu_Display(&Menu_1, LCDInitStructure); //Displays menu
+	#endif //#ifdef MENU_MIDDLEWARE_EXAMPLE
+	
 	while(1){
+		#ifdef LCD_FIRMWARE_EXAMPLE
 		/*Here is a test of your ADC initialization/configuration. If you have done it right LCD should display different values 
 		when you press any of the buttons on LCD shield (apart of RESET button of course).*/
 		Buttons_CheckLimits(LCDInitStructure, &ADC_HandleStructure);
 		HAL_Delay(250);
+		#endif //#ifdef LCD_FIRMWARE_EXAMPLE
+		
+		#ifdef MENU_MIDDLEWARE_EXAMPLE
+		
+		//Checking for buttons on LCD:
+		if ((Buttons_Check(LCDInitStructure, &ADC_HandleStructure) == UP)){ //If UP button is pressed
+			switch (MenuToDisplay) {
+				case 0:
+					Menu_MoveUP(&Menu_1); //Moves cursor up
+					Menu_Display(&Menu_1, LCDInitStructure);
+					break;
+				case 1:
+					Menu_MoveUP(&Menu_Options); //Moves cursor up
+					Menu_Display(&Menu_Options, LCDInitStructure);
+					break;
+			}
+		}
+		else if ((Buttons_Check(LCDInitStructure, &ADC_HandleStructure) == DOWN)){ //If DOWN button is pressed
+			switch (MenuToDisplay) {
+				case 0:
+					Menu_MoveDOWN(&Menu_1); //Moves cursor down
+					Menu_Display(&Menu_1, LCDInitStructure);
+					break;
+				case 1:
+					Menu_MoveDOWN(&Menu_Options); //Moves cursor down
+					Menu_Display(&Menu_Options, LCDInitStructure);
+					break;
+			}
+		}
+		else if ((Buttons_Check(LCDInitStructure, &ADC_HandleStructure) == SELECT)){ /*If SELECT button is pressed 
+																				and certain condition is true - change "MenuToDisplay" variable value*/
+			switch (MenuToDisplay){
+				case 0:
+					if (Menu_ReturnPos(Menu_1) == 2){ //If "Options" line in Menu_1 is selected
+						MenuToDisplay = 1; //Display Menu_Options
+						
+						//Return Menu_Options to initial position state in case it was changed before:
+						Menu_Options.LinesToDisplay[0] = 1;
+						Menu_Options.LinesToDisplay[1] = 2;
+						Menu_Options.CurrentLinePos = 0;
+						
+						Menu_Display(&Menu_Options, LCDInitStructure); //Display Menu_Options
+					}
+					break;
+				case 1:
+					if (Menu_ReturnPos(Menu_Options) == 3){ //If "Return" line in Menu_Options is selected
+						MenuToDisplay = 0; //Display Menu_1
+						
+						//Return Menu_1 to initial position state in case it was changed before:
+						Menu_1.LinesToDisplay[0] = 1;
+						Menu_1.LinesToDisplay[1] = 2;
+						Menu_1.CurrentLinePos = 0;
+						
+						Menu_Display(&Menu_1, LCDInitStructure); //Display Menu_1
+					}
+					break;
+			}
+		}
+		
+		#endif //#ifdef MENU_MIDDLEWARE_EXAMPLE
 	}
 }
 
 
-static __INLINE void SysInit(ADC_HandleTypeDef *ADC_HandleStructure)
-{
+static __INLINE void SysInit(ADC_HandleTypeDef *ADC_HandleStructure){
 	HAL_Init(); //HAL initialization.
 	
 	GPIO_InitTypeDef GPIO_InitStructure = {0};

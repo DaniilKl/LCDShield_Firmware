@@ -3,17 +3,28 @@
 
 /* File name: main.h;
  * Author: Daniil;
- * Platform: Windows 10 x64;
  * Compiler: armclang;
  * Language: C;
  * Hardware used in testing: STM32 NUCLEO-F401RE, LCD Keypad Shield for ARDUINO, LCD1602 with HCD44780UA00 chip.
  * Warnings: -
- * Description: -
+ * Description: main.h and main.c files consist two examples: an example of using LCD firmware and an example of using menu middleware for LCD.
+ *							The LCD firmware example is compiled automatically. If you want to compile menu example - define MENU_MIDDLEWARE_EXAMPLE.
+ * Last update: 07.04.2023.
  * */
+
+//#define MENU_MIDDLEWARE_EXAMPLE
 
 #include <stm32f4xx_hal.h>
 #include "lcd.h"
 #include "stm32f4xx_it.h"
+
+#ifndef MENU_MIDDLEWARE_EXAMPLE
+	#define LCD_FIRMWARE_EXAMPLE
+#else
+	#include <stdlib.h>
+	#include <LCDmenu.h>
+#endif //#ifndef MENU_MIDDLEWARE_EXAMPLE
+
 
 //Data LCD pins definitions:
 #define LCD_D4Port GPIOB
